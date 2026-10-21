@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AviatorLab + MatchWise</title>
+<style>
+:root{--bg:#eef3fa;--panel:#fff;--ink:#14213d;--mut:#55627f;--line:#d5deec;--acc:#d9432b;--sky:#0e8a85;--tint:rgba(20,33,61,.06);--hdr:#eef3fa;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0d1530;--panel:#152044;--ink:#eaf0ff;--mut:#9eabd0;--line:#26325f;--acc:#ff7a5c;--sky:#4fd8d0;--tint:rgba(255,255,255,.06);--hdr:#0d1530}}
+:root[data-theme="dark"]{--bg:#0d1530;--panel:#152044;--ink:#eaf0ff;--mut:#9eabd0;--line:#26325f;--acc:#ff7a5c;--sky:#4fd8d0;--tint:rgba(255,255,255,.06);--hdr:#0d1530}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Avenir Next","Segoe UI",system-ui,sans-serif}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);background:var(--hdr);z-index:10}
+.num{font-variant-numeric:tabular-nums}
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:var(--hdr);border-bottom:1px solid var(--line)}
+.bar{max-width:1100px;margin:auto;display:flex;align-items:center;gap:14px;padding:10px 16px;flex-wrap:wrap}
+.logo{font-weight:800;font-size:19px;letter-spacing:-.02em}.logo i{font-style:normal;color:var(--acc)}
+nav{display:flex;gap:4px;flex:1;overflow-x:auto}
+nav button,.chip{font:inherit;border:0;background:none;color:var(--mut);padding:8px 12px;border-radius:999px;cursor:pointer;white-space:nowrap}
+nav button[aria-selected=true]{background:var(--ink);color:var(--bg);font-weight:600}
+button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid var(--sky);outline-offset:2px}
+.me{display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:4px 12px 4px 4px;color:var(--ink);cursor:pointer;font:inherit}
+.av{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--acc),var(--sky));color:#fff;display:grid;place-items:center;font-weight:700;font-size:13px}
+main{max-width:1100px;margin:auto;padding:18px 16px 40px}
+section{display:none}section.on{display:block}
+.warn{font-size:13px;color:var(--mut);background:var(--tint);border-radius:10px;padding:8px 12px;margin-bottom:14px}
+.hero{border-radius:20px;overflow:hidden;position:relative;background:linear-gradient(180deg,#1b2a5e 0%,#6b3f6e 62%,#e8785a 100%);color:#fff;min-height:330px}
+#cv{width:100%;height:330px;display:block}
+.mult{position:absolute;left:0;right:0;top:34%;text-align:center;font-weight:800;font-size:clamp(46px,11vw,92px);letter-spacing:-.03em;text-shadow:0 2px 18px rgba(0,0,0,.35)}
+.mult small{display:block;font-size:15px;font-weight:500;letter-spacing:0;opacity:.85}
+.mult.crash{color:#ffb4a3}
+.hist{position:absolute;left:12px;right:12px;top:10px;display:flex;gap:6px;overflow:hidden}
+.hist span{font-size:12px;padding:2px 9px;border-radius:999px;background:rgba(255,255,255,.16);font-weight:600}
+.hist span.hi{background:rgba(79,216,208,.35)}
+.ctl{display:flex;gap:12px;flex-wrap:wrap;align-items:end;padding:14px 16px;background:var(--panel);border:1px solid var(--line);border-radius:16px;margin-top:12px}
+label{font-size:13px;color:var(--mut);display:grid;gap:3px}
+input[type=number],input[type=text]{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 10px;width:110px}
+.btn{font:inherit;font-weight:600;border:0;border-radius:12px;padding:10px 16px;cursor:pointer;background:var(--acc);color:#fff}
+.btn.alt{background:var(--tint);color:var(--ink)}.btn:disabled{opacity:.45;cursor:not-allowed}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));margin-top:12px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px 16px}
+.card h3{margin:0 0 4px;font-size:14px;color:var(--mut);font-weight:600}
+.big{font-size:28px;font-weight:800;letter-spacing:-.02em}
+.up{color:var(--sky)}.dn{color:var(--acc)}
+.two{display:grid;gap:14px;grid-template-columns:2fr 1fr;margin-top:14px}
+@media(max-width:800px){.two{grid-template-columns:1fr}}
+h2{font-size:22px;margin:22px 0 10px;letter-spacing:-.02em}
+.fx{display:flex;align-items:center;gap:12px;width:100%;text-align:left;font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:border-color .15s,transform .15s}
+.fx:hover{border-color:var(--sky);transform:translateY(-1px)}
+.fx time{font-size:13px;color:var(--mut);min-width:84px}.fx b{flex:1}
+.pp{display:flex;gap:6px;font-size:13px;font-weight:700}.pp span{background:var(--tint);padding:3px 8px;border-radius:8px}
+.day{font-size:13px;color:var(--mut);margin:14px 0 6px;font-weight:600}
+dialog{border:0;border-radius:20px;padding:0;max-width:480px;width:calc(100% - 28px);background:var(--panel);color:var(--ink)}
+dialog::backdrop{background:rgba(5,10,30,.6)}
+.dl{padding:20px}.dl h3{margin:0 0 2px;font-size:20px}
+.pb{display:flex;height:14px;border-radius:7px;overflow:hidden;margin:12px 0 4px}
+.pb i{display:block}.leg{display:flex;justify-content:space-between;font-size:13px;font-weight:700}
+.mx{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin:10px 0;font-size:11px;text-align:center}
+.mx div{aspect-ratio:1;display:grid;place-items:center;border-radius:4px;background:rgba(14,138,133,var(--o,0));color:var(--ink)}
+.mx .h{background:none;color:var(--mut)}
+ul.tips{padding-left:18px;color:var(--mut)}ul.tips li{margin:6px 0}
+#sp{width:100%;height:70px;display:block}
+.tag{font-size:11px;background:var(--tint);color:var(--mut);padding:2px 8px;border-radius:999px;margin-left:6px;font-weight:600}
+.note{font-size:13px;color:var(--mut)}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header><div class="bar">
+<div class="logo">Aviator<i>Lab</i> + MatchWise</div>
+<nav role="tablist" aria-label="Sections">
+<button role="tab" data-t="dashboard">Dashboard</button><button role="tab" data-t="fixtures">Fixtures</button><button role="tab" data-t="profile">Profile</button><button role="tab" data-t="safe">Play safe</button>
+</nav>
+<button class="chip" id="th" aria-label="Toggle light or dark theme">Theme</button>
+<button class="me" data-go="profile" aria-label="Open profile"><span class="av" id="av">G</span><span id="nm">Guest</span></button>
+</div></header>
+<main>
+<div class="warn">Educational simulator on virtual credits. No real money, no betting accounts, no live betting data. Crash rounds are random and cannot be predicted from history. Fixture odds are model estimates on demo data, not advice.</div>
+
+<section id="dashboard">
+<div class="hero"><canvas id="cv" aria-label="Live crash curve"></canvas><div class="hist" id="hist"></div><div class="mult" id="mult" aria-live="off">1.00×<small>Starting…</small></div></div>
+<div class="ctl">
+<label>Stake (credits)<input type="number" id="stake" value="10" min="1" step="1"></label>
+<label>Auto cash-out (×)<input type="number" id="auto" value="2" min="1.1" step="0.1"></label>
+<button class="btn" id="play">Start auto-play</button>
+<button class="btn alt" id="cash" disabled>Cash out now</button>
+<button class="btn alt" id="fast">Simulate 5,000 rounds</button>
+</div>
+<p class="note" id="msg" role="status">Each round is generated fresh in your browser with a 3% house edge, like a typical crash game. Turn on auto-play to see what a strategy really returns.</p>
+<div class="grid">
+<div class="card"><h3>Virtual balance</h3><div class="big num" id="bal">1,000</div><div class="note num" id="pl">No rounds played</div></div>
+<div class="card"><h3>Rounds seen</h3><div class="big num" id="rn">0</div><div class="note">since you opened the page</div></div>
+<div class="card"><h3>Reached 2× or more</h3><div class="big num" id="r2">–</div><div class="note">model says 48.5%</div></div>
+<div class="card"><h3>Session time</h3><div class="big num" id="tm">0:00</div><div class="note" id="rc">Reality check every 15 min</div></div>
+</div>
+<div class="two">
+<div class="card"><h3>Balance after each round</h3><canvas id="sp"></canvas></div>
+<div class="card"><h3>Next match</h3><div id="nx"></div></div>
+</div>
+</section>
+
+<section id="fixtures">
+<h2>Upcoming fixtures<span class="tag">Demo data</span></h2>
+<p class="note">Fictional teams and fixtures. Tap a match to see the model’s home, draw and away probabilities and scoreline grid. To use real fixtures, supply an authorized fixtures source in the Python app.</p>
+<div id="fxl"></div>
+</section>
+
+<section id="profile">
+<h2>Your profile</h2>
+<div class="grid">
+<div class="card"><h3>Display name</h3><input type="text" id="pn" maxlength="20" aria-label="Display name"></div>
+<div class="card"><h3>Session loss limit (credits)</h3><input type="number" id="ll" value="200" min="10" step="10" aria-label="Loss limit"><div class="note">Auto-play stops when reached.</div></div>
+<div class="card"><h3>Virtual wallet</h3><button class="btn alt" id="rs">Reset to 1,000</button></div>
+</div>
+<h2>What the numbers say</h2>
+<div class="card"><p id="ins" class="note">Play a few rounds to see how your results compare with the model.</p></div>
+</section>
+
+<section id="safe">
+<h2>Play safe</h2>
+<div class="card"><ul class="tips">
+<li>Crash multipliers are random. A run of low rounds never means a high one is “due”.</li>
+<li>Every fixed cash-out target has the same expected return, so none beats the house edge.</li>
+<li>Decide your limit before you start, and stop when you reach it.</li>
+<li>Never chase losses or borrow money to gamble.</li>
+<li>If gambling affects your money, work, relationships or wellbeing, take a break and contact a local support service or someone you trust.</li></ul></div>
+</section>
+</main>
+
+<dialog id="dg"><div class="dl" id="dc"></div></dialog>
+
+<script>
+(function(){
+var $=function(i){return document.getElementById(i)},fmt=function(n){return Math.round(n).toLocaleString()};
+function sg(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){return null}}
+/* tabs */
+var tabs=["dashboard","fixtures","profile","safe"];
+function show(t){if(tabs.indexOf(t)<0)t="dashboard";tabs.forEach(function(x){$(x).classList.toggle("on",x===t)});
+document.querySelectorAll("nav button").forEach(function(b){b.setAttribute("aria-selected",b.dataset.t===t)});
+if(t==="dashboard")sz();window.scrollTo(0,0)}
+document.querySelectorAll("nav button").forEach(function(b){b.onclick=function(){show(b.dataset.t)}});
+document.querySelectorAll("[data-go]").forEach(function(b){b.onclick=function(){show(b.dataset.go)}});
+show((location.hash||"").slice(1));
+/* theme */
+$("th").onclick=function(){var r=document.documentElement,d=r.dataset.theme?r.dataset.theme==="dark":matchMedia("(prefers-color-scheme:dark)").matches;r.dataset.theme=d?"light":"dark";draw()};
+/* profile */
+function setName(n){n=(n||"").trim()||"Guest";$("nm").textContent=n;$("av").textContent=n.charAt(0).toUpperCase();$("pn").value=n==="Guest"?"":n;sg("al-name",n)}
+setName(sg("al-name"));$("pn").onchange=function(){setName(this.value)};
+var ll=+sg("al-ll")||200;$("ll").value=ll;$("ll").onchange=function(){ll=Math.max(10,+this.value||200);sg("al-ll",ll)};
+/* state */
+var START=1000,wallet=START,rounds=0,hits=0,hist=[],series=[START],played=0,wins=0,staked=0,returned=0,autoOn=false,bet=null;
+var ph="wait",t0=performance.now(),cp=2,m=1,sp=1;
+function crashPt(){var u=1-Math.random();return Math.max(1,Math.floor(97/u)/100)}
+/* canvas */
+var cv=$("cv"),cx=cv.getContext("2d"),W=0,H=0;
+function sz(){var r=cv.getBoundingClientRect(),d=window.devicePixelRatio||1;W=r.width;H=330;cv.width=W*d;cv.height=H*d;cx.setTransform(d,0,0,d,0,0);var s=$("sp");s.width=s.clientWidth*d;s.height=70*d;s.getContext("2d").setTransform(d,0,0,d,0,0);draw()}
+window.addEventListener("resize",sz);
+function draw(){cx.clearRect(0,0,W,H);if(!W)return;
+var T=ph==="wait"?0:Math.log(Math.max(m,1.0001))/.1;var top=Math.max(2,m*1.15),pts=[];
+cx.strokeStyle="rgba(255,255,255,.12)";cx.lineWidth=1;for(var i=1;i<5;i++){cx.beginPath();cx.moveTo(0,H*i/5);cx.lineTo(W,H*i/5);cx.stroke()}
+var n=60;for(var k=0;k<=n;k++){var f=k/n,mm=Math.exp(Math.log(Math.max(m,1.0001))*f);pts.push([40+f*(W-80),H-30-(Math.log(mm)/Math.log(top))*(H-90)])}
+if(ph!=="wait"){cx.beginPath();pts.forEach(function(p,j){j?cx.lineTo(p[0],p[1]):cx.moveTo(p[0],p[1])});cx.strokeStyle=ph==="crash"?"#ffb4a3":"#4fd8d0";cx.lineWidth=4;cx.lineCap="round";cx.stroke();
+var l=pts[n];cx.lineTo(l[0],H-30);cx.lineTo(40,H-30);cx.fillStyle="rgba(79,216,208,.14)";cx.fill();
+cx.font="26px sans-serif";cx.save();cx.translate(l[0],l[1]);cx.rotate(-.5);cx.fillText(ph==="crash"?"💥":"✈️",-12,8);cx.restore()}
+spark()}
+function spark(){var s=$("sp"),c=s.getContext("2d"),w=s.clientWidth,h=70;c.clearRect(0,0,w,h);if(series.length<2)return;
+var a=series.slice(-120),lo=Math.min.apply(0,a),hi=Math.max.apply(0,a);if(hi===lo){hi+=1}
+var cs=getComputedStyle(document.documentElement);c.beginPath();a.forEach(function(v,i){var x=i/(a.length-1)*w,y=h-4-((v-lo)/(hi-lo))*(h-8);i?c.lineTo(x,y):c.moveTo(x,y)});c.strokeStyle=a[a.length-1]>=START?cs.getPropertyValue("--sky"):cs.getPropertyValue("--acc");c.lineWidth=2;c.stroke()}
+/* round loop */
+function newRound(){ph="wait";t0=performance.now();m=1;cp=crashPt();bet=null;
+if(autoOn){if(START-wallet>=ll){autoOn=false;$("play").textContent="Start auto-play";say("Loss limit reached, so auto-play stopped. That is the limit working as intended.")}
+else{var s=Math.max(1,+$("stake").value||10);if(wallet>=s){bet={s:s,done:false};wallet-=s;staked+=s}else{autoOn=false;$("play").textContent="Start auto-play";say("Balance too low for that stake.")}}}
+$("cash").disabled=true;$("mult").classList.remove("crash")}
+function pay(x){bet.done=true;bet.x=x;wallet+=bet.s*x;returned+=bet.s*x;played++;if(x>1)wins++}
+function end(){rounds++;if(cp>=2)hits++;hist.unshift(cp);hist=hist.slice(0,14);
+if(bet&&!bet.done){bet.done=true;played++}series.push(wallet);stats()}
+function tick(now){var el=now-t0,mu=$("mult");
+if(ph==="wait"){var s=Math.max(0,4-el/1000);mu.innerHTML="1.00×<small>Next round in "+Math.ceil(s)+"s"+(bet?" · bet placed":"")+"</small>";if(el>=4000){ph="fly";t0=now;$("cash").disabled=!(bet&&!bet.done)}}
+else if(ph==="fly"){var t=el/1000;m=Math.exp(.08*t+.004*t*t);
+if(bet&&!bet.done){var a=Math.max(1.1,+$("auto").value||2);if(m>=a&&m<cp){pay(a);say("Cashed out at "+a.toFixed(2)+"×.");$("cash").disabled=true}}
+if(m>=cp){m=cp;ph="crash";t0=now;end();mu.classList.add("crash");mu.innerHTML=cp.toFixed(2)+"×<small>Crashed</small>";$("cash").disabled=true}
+else mu.innerHTML=m.toFixed(2)+"×<small>Flying</small>"}
+else if(el>2500)newRound();
+draw();requestAnimationFrame(tick)}
+function say(t){$("msg").textContent=t}
+$("cash").onclick=function(){if(ph==="fly"&&bet&&!bet.done){var x=Math.floor(m*100)/100;pay(x);say("Cashed out at "+x.toFixed(2)+"×.");this.disabled=true}};
+$("play").onclick=function(){autoOn=!autoOn;this.textContent=autoOn?"Stop auto-play":"Start auto-play";if(autoOn){START=Math.max(START,wallet);say("Auto-play on. The next round will include your virtual stake.")}};
+$("rs").onclick=function(){wallet=START=1000;series=[1000];played=wins=staked=returned=0;stats()};
+$("fast").onclick=function(){var s=Math.max(1,+$("stake").value||10),a=Math.max(1.1,+$("auto").value||2),n=5000,b=0,h=0;
+for(var i=0;i<n;i++){var c=crashPt();if(c>=a){b+=s*(a-1);h++}else b-=s}
+var rtp=h*a/n;say("Over "+fmt(n)+" instant rounds at "+a.toFixed(1)+"× the virtual result was "+(b>=0?"+":"−")+fmt(Math.abs(b))+" credits. Observed return "+(rtp*100).toFixed(1)+"% of stakes; the model’s long-run return is 97%. Try other targets: they all converge there.")};
+function stats(){var d=wallet-START;$("bal").textContent=fmt(wallet);
+$("pl").textContent=played?((d>=0?"+":"−")+fmt(Math.abs(d))+" vs start · "+wins+" of "+played+" bets won"):"No bets placed";$("pl").className="note num "+(played?(d>=0?"up":"dn"):"");
+$("rn").textContent=fmt(rounds);$("r2").textContent=rounds?(hits/rounds*100).toFixed(1)+"%":"–";
+$("hist").innerHTML=hist.map(function(c){return '<span class="'+(c>=2?"hi":"")+'">'+c.toFixed(2)+'×</span>'}).join("");
+$("ins").textContent=staked?("You have staked "+fmt(staked)+" credits and received "+fmt(returned)+" back: "+(returned/staked*100).toFixed(1)+"% of stakes. Short runs swing widely around the model’s 97%, so a lucky streak says nothing about the next round."):"Play a few rounds to see how your results compare with the model."}
+setInterval(function(){var s=Math.floor((Date.now()-T0)/1000),mn=Math.floor(s/60);$("tm").textContent=mn+":"+("0"+s%60).slice(-2);
+if(mn>0&&mn%15===0&&s%60===0)$("rc").textContent="Reality check: "+mn+" min in. Take a break?"},1000);var T0=Date.now();
+/* MatchWise (Poisson baseline, same strengths as the Python demo data) */
+var TM={"Harbor FC":[1.25,.85],"Valley United":[1,1],"Metro City":[1.3,.8],"River Rovers":[.85,1.15],"Lakeside Town":[.95,1.05],"Hill Athletic":[.75,1.25]};
+function pm(l,k){var p=Math.exp(-l);for(var i=1;i<=k;i++)p*=l/i;return p}
+function pred(h,a){var lh=1.45*TM[h][0]*TM[a][1],la=1.15*TM[a][0]*TM[h][1],N=7,M=[],w=0,d=0,l=0,best=[0,0,0];
+for(var i=0;i<=N;i++){M[i]=[];for(var j=0;j<=N;j++){var p=pm(lh,i)*pm(la,j);M[i][j]=p;if(p>best[2])best=[i,j,p];if(i>j)w+=p;else if(i===j)d+=p;else l+=p}}
+var s=w+d+l;return{h:w/s,d:d/s,a:l/s,lh:lh,la:la,M:M,best:best}}
+var FX=[["Harbor FC","Hill Athletic",1,"15:00"],["Metro City","River Rovers",1,"17:30"],["Valley United","Lakeside Town",1,"20:00"],
+["Lakeside Town","Harbor FC",2,"14:00"],["River Rovers","Valley United",2,"16:30"],["Hill Athletic","Metro City",2,"19:45"],
+["Metro City","Harbor FC",3,"15:00"],["Valley United","Hill Athletic",3,"17:30"],["River Rovers","Lakeside Town",3,"20:00"]];
+function dayLbl(o){var d=new Date();d.setDate(d.getDate()+o);return d.toLocaleDateString(undefined,{weekday:"long",day:"numeric",month:"short"})}
+function pc(x){return Math.round(x*100)+"%"}
+function row(f,i){var p=pred(f[0],f[1]);return '<button class="fx" data-i="'+i+'"><time>'+f[3]+'</time><b>'+f[0]+' v '+f[1]+'</b><span class="pp"><span>'+pc(p.h)+'</span><span>'+pc(p.d)+'</span><span>'+pc(p.a)+'</span></span></button>'}
+var out="",last=0;FX.forEach(function(f,i){if(f[2]!==last){last=f[2];out+='<div class="day">'+dayLbl(f[2])+'</div>'}out+=row(f,i)});
+$("fxl").innerHTML=out;$("nx").innerHTML=row(FX[0],0)+'<p class="note">Home, draw, away. Tap to open.</p>';
+function open(i){var f=FX[i],p=pred(f[0],f[1]),g="";
+for(var j=0;j<=5;j++)g+='<div class="h">'+j+'</div>';g='<div class="h"></div>'+g;
+for(var r=0;r<=5;r++){g+='<div class="h">'+r+'</div>';for(var c=0;c<=5;c++){var v=p.M[r][c];g+='<div style="--o:'+Math.min(.95,v*7).toFixed(2)+'">'+(v>=.02?Math.round(v*100):"")+'</div>'}}
+$("dc").innerHTML='<h3>'+f[0]+' v '+f[1]+'</h3><div class="note">'+dayLbl(f[2])+', '+f[3]+' <span class="tag">Demo data</span></div>'+
+'<div class="pb"><i style="width:'+pc(p.h)+';background:var(--sky)"></i><i style="width:'+pc(p.d)+';background:var(--mut)"></i><i style="width:'+pc(p.a)+';background:var(--acc)"></i></div>'+
+'<div class="leg"><span>'+f[0]+' '+pc(p.h)+'</span><span>Draw '+pc(p.d)+'</span><span>'+f[1]+' '+pc(p.a)+'</span></div>'+
+'<p class="note">Expected goals '+p.lh.toFixed(2)+' to '+p.la.toFixed(2)+'. Most likely score '+p.best[0]+'–'+p.best[1]+' ('+pc(p.best[2])+').</p>'+
+'<div class="note">Scoreline chances (%), home goals down, away goals across</div><div class="mx">'+g+'</div>'+
+'<p class="note">Independent-Poisson baseline. It ignores injuries, lineups and form, and probabilities are uncertain estimates, not advice.</p><button class="btn" id="cl">Close</button>';
+$("cl").onclick=function(){$("dg").close()};$("dg").showModal()}
+document.addEventListener("click",function(e){var b=e.target.closest(".fx");if(b)open(+b.dataset.i)});
+$("dg").addEventListener("click",function(e){if(e.target===this)this.close()});
+stats();sz();newRound();requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>
