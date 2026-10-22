@@ -64,6 +64,11 @@ ul.tips{padding-left:18px;color:var(--mut)}ul.tips li{margin:6px 0}
 #sp{width:100%;height:70px;display:block}
 .tag{font-size:11px;background:var(--tint);color:var(--mut);padding:2px 8px;border-radius:999px;margin-left:6px;font-weight:600}
 .note{font-size:13px;color:var(--mut)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}.chips .chip{border:1px solid var(--line)}.chips .chip[aria-pressed=true]{background:var(--ink);color:var(--bg);font-weight:600}
+.sec{font-weight:700;margin:18px 0 6px}.fx.st{cursor:default}.fx.st:hover{transform:none;border-color:var(--line)}
+.fm{display:inline-block;width:22px;height:22px;line-height:22px;text-align:center;border-radius:6px;font-size:12px;font-weight:700;margin:0 2px;background:var(--tint)}
+.fm.W{background:var(--sky);color:#fff}.fm.L{background:var(--acc);color:#fff}
+a.btn{display:inline-block;text-decoration:none}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -71,7 +76,7 @@ ul.tips{padding-left:18px;color:var(--mut)}ul.tips li{margin:6px 0}
 <header><div class="bar">
 <div class="logo">Aviator<i>Lab</i> + MatchWise</div>
 <nav role="tablist" aria-label="Sections">
-<button role="tab" data-t="dashboard">Dashboard</button><button role="tab" data-t="fixtures">Fixtures</button><button role="tab" data-t="profile">Profile</button><button role="tab" data-t="safe">Play safe</button>
+<button role="tab" data-t="dashboard">Dashboard</button><button role="tab" data-t="fixtures">Matches</button><button role="tab" data-t="profile">Profile</button><button role="tab" data-t="safe">Play safe</button>
 </nav>
 <button class="chip" id="th" aria-label="Toggle light or dark theme">Theme</button>
 <button class="me" data-go="profile" aria-label="Open profile"><span class="av" id="av">G</span><span id="nm">Guest</span></button>
@@ -104,9 +109,10 @@ ul.tips{padding-left:18px;color:var(--mut)}ul.tips li{margin:6px 0}
 </section>
 
 <section id="fixtures">
-<h2>Upcoming fixtures<span class="tag">Demo data</span></h2>
-<p class="note">Fictional teams and fixtures. Tap a match to see the model’s home, draw and away probabilities and scoreline grid. To use real fixtures, supply an authorized fixtures source in the Python app.</p>
+<h2>Match centre</h2>
+<p class="note" id="mcs">Loading matches…</p>
 <div id="fxl"></div>
+<p class="note">Match data: football-data.org. Probabilities are model estimates, not advice. Check your local licensed broadcaster for coverage.</p>
 </section>
 
 <section id="profile">
@@ -207,35 +213,42 @@ $("hist").innerHTML=hist.map(function(c){return '<span class="'+(c>=2?"hi":"")+'
 $("ins").textContent=staked?("You have staked "+fmt(staked)+" credits and received "+fmt(returned)+" back: "+(returned/staked*100).toFixed(1)+"% of stakes. Short runs swing widely around the model’s 97%, so a lucky streak says nothing about the next round."):"Play a few rounds to see how your results compare with the model."}
 setInterval(function(){var s=Math.floor((Date.now()-T0)/1000),mn=Math.floor(s/60);$("tm").textContent=mn+":"+("0"+s%60).slice(-2);
 if(mn>0&&mn%15===0&&s%60===0)$("rc").textContent="Reality check: "+mn+" min in. Take a break?"},1000);var T0=Date.now();
-/* MatchWise (Poisson baseline, same strengths as the Python demo data) */
-var TM={"Harbor FC":[1.25,.85],"Valley United":[1,1],"Metro City":[1.3,.8],"River Rovers":[.85,1.15],"Lakeside Town":[.95,1.05],"Hill Athletic":[.75,1.25]};
-function pm(l,k){var p=Math.exp(-l);for(var i=1;i<=k;i++)p*=l/i;return p}
-function pred(h,a){var lh=1.45*TM[h][0]*TM[a][1],la=1.15*TM[a][0]*TM[h][1],N=7,M=[],w=0,d=0,l=0,best=[0,0,0];
-for(var i=0;i<=N;i++){M[i]=[];for(var j=0;j<=N;j++){var p=pm(lh,i)*pm(la,j);M[i][j]=p;if(p>best[2])best=[i,j,p];if(i>j)w+=p;else if(i===j)d+=p;else l+=p}}
-var s=w+d+l;return{h:w/s,d:d/s,a:l/s,lh:lh,la:la,M:M,best:best}}
-var FX=[["Harbor FC","Hill Athletic",1,"15:00"],["Metro City","River Rovers",1,"17:30"],["Valley United","Lakeside Town",1,"20:00"],
-["Lakeside Town","Harbor FC",2,"14:00"],["River Rovers","Valley United",2,"16:30"],["Hill Athletic","Metro City",2,"19:45"],
-["Metro City","Harbor FC",3,"15:00"],["Valley United","Hill Athletic",3,"17:30"],["River Rovers","Lakeside Town",3,"20:00"]];
-function dayLbl(o){var d=new Date();d.setDate(d.getDate()+o);return d.toLocaleDateString(undefined,{weekday:"long",day:"numeric",month:"short"})}
+/* Match centre: data/matches.json is rebuilt by a scheduled workflow */
+var MC=null,flt="ALL",SH=0;
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
 function pc(x){return Math.round(x*100)+"%"}
-function row(f,i){var p=pred(f[0],f[1]);return '<button class="fx" data-i="'+i+'"><time>'+f[3]+'</time><b>'+f[0]+' v '+f[1]+'</b><span class="pp"><span>'+pc(p.h)+'</span><span>'+pc(p.d)+'</span><span>'+pc(p.a)+'</span></span></button>'}
-var out="",last=0;FX.forEach(function(f,i){if(f[2]!==last){last=f[2];out+='<div class="day">'+dayLbl(f[2])+'</div>'}out+=row(f,i)});
-$("fxl").innerHTML=out;$("nx").innerHTML=row(FX[0],0)+'<p class="note">Home, draw, away. Tap to open.</p>';
-function read(f,p){var h=f[0],a=f[1],t=p.h>=p.a&&p.h>=p.d?h:(p.a>=p.d?a:"Draw"),gap=Math.abs(p.h-p.a);
-if(t==="Draw")return"Too close to call; a draw is the single most likely result ("+pc(p.d)+").";
-return(gap<.1?"Evenly matched":gap<.25?"Slight edge":"Clear favourite")+": "+t+" ("+pc(t===h?p.h:p.a)+" to win). Attack "+TM[h][0].toFixed(2)+", goals conceded "+TM[h][1].toFixed(2)+" for "+h+"; "+TM[a][0].toFixed(2)+" and "+TM[a][1].toFixed(2)+" for "+a+" (lower conceded is better)."}
-function open(i){var f=FX[i],p=pred(f[0],f[1]),g="";
-for(var j=0;j<=5;j++)g+='<div class="h">'+j+'</div>';g='<div class="h"></div>'+g;
-for(var r=0;r<=5;r++){g+='<div class="h">'+r+'</div>';for(var c=0;c<=5;c++){var v=p.M[r][c];g+='<div style="--o:'+Math.min(.95,v*7).toFixed(2)+'">'+(v>=.02?Math.round(v*100):"")+'</div>'}}
-$("dc").innerHTML='<h3>'+f[0]+' v '+f[1]+'</h3><div class="note">'+dayLbl(f[2])+', '+f[3]+' <span class="tag">Demo data</span></div>'+
-'<div class="pb"><i style="width:'+pc(p.h)+';background:var(--sky)"></i><i style="width:'+pc(p.d)+';background:var(--mut)"></i><i style="width:'+pc(p.a)+';background:var(--acc)"></i></div>'+
-'<div class="leg"><span>'+f[0]+' '+pc(p.h)+'</span><span>Draw '+pc(p.d)+'</span><span>'+f[1]+' '+pc(p.a)+'</span></div>'+
-'<p><b>Model read:</b> '+read(f,p)+'</p><p class="note">Expected goals '+p.lh.toFixed(2)+' to '+p.la.toFixed(2)+'. Most likely score '+p.best[0]+'–'+p.best[1]+' ('+pc(p.best[2])+').</p>'+
-'<div class="note">Scoreline chances (%), home goals down, away goals across</div><div class="mx">'+g+'</div>'+
-'<p class="note">Independent-Poisson baseline. It ignores injuries, lineups and form, and probabilities are uncertain estimates, not advice.</p><button class="btn" id="cl">Close</button>';
-$("cl").onclick=function(){$("dg").close()};$("dg").showModal()}
-document.addEventListener("click",function(e){var b=e.target.closest(".fx");if(b)open(+b.dataset.i)});
+function dt(m){return new Date(Date.parse(m.utc)+SH)}
+function hm(d){return d.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}
+function dl(d){return d.toLocaleDateString(undefined,{weekday:"long",day:"numeric",month:"short"})}
+function ds(d){return d.toLocaleDateString(undefined,{day:"numeric",month:"short"})}
+function gl(x){return x==null?"–":x}
+function fc(a){return a.length?a.map(function(x){return'<span class="fm '+x+'">'+x+'</span>'}).join(""):'<span class="note">no data</span>'}
+function upr(m,i){var d=dt(m),a=m.analysis;return'<button class="fx" data-i="'+i+'"><time>'+hm(d)+'</time><b>'+esc(m.home)+' v '+esc(m.away)+'</b>'+(a?'<span class="pp"><span>'+pc(a.p[0])+'</span><span>'+pc(a.p[1])+'</span><span>'+pc(a.p[2])+'</span></span>':'')+'</button>'}
+function scr(m,lv){return'<div class="fx st"><time>'+(lv?"In play":ds(dt(m)))+'</time><b>'+esc(m.home)+' v '+esc(m.away)+'</b><span class="pp"><span>'+gl(m.hg)+' – '+gl(m.ag)+'</span></span></div>'}
+function nxt(){var m=MC.upcoming[0];$("nx").innerHTML=m?upr(m,0)+'<p class="note">'+esc((MC.competitions[m.comp]||{}).name||"")+'. Tap for the analysis.</p>':'<p class="note">No upcoming fixtures.</p>'}
+function render(){var cs=MC.competitions,ok=function(m){return flt==="ALL"||m.comp===flt};
+var lv=MC.live.filter(ok),ups=MC.upcoming.filter(ok),rc=MC.recent.filter(ok),h='<div class="chips">';
+["ALL"].concat(Object.keys(cs)).forEach(function(k){h+='<button class="chip" data-c="'+k+'" aria-pressed="'+(k===flt)+'">'+(k==="ALL"?"All":esc(cs[k].name))+'</button>'});
+h+='</div><div class="sec">In play (scores can be delayed)</div>'+(lv.length?lv.map(function(m){return scr(m,1)}).join(""):'<p class="note">No matches in play right now.</p>');
+h+='<div class="sec">Upcoming: tap a match for the analysis</div>';var last="";
+ups.forEach(function(m){var d=dl(dt(m));if(d!==last){last=d;h+='<div class="day">'+d+'</div>'}h+=upr(m,MC.upcoming.indexOf(m))});
+if(!ups.length)h+='<p class="note">No fixtures in the next 7 days.</p>';
+h+='<div class="sec">Recent results</div>'+(rc.length?rc.slice(0,10).map(function(m){return scr(m,0)}).join(""):'<p class="note">No recent results.</p>');
+$("fxl").innerHTML=h;var age=Math.max(0,Math.round((Date.now()-Date.parse(MC.generated_at))/60000));
+$("mcs").textContent=MC.demo?"Demo data with fictional teams. Add your football-data.org key to see real matches (see the README).":"Updated "+(age<90?age+" min":Math.round(age/60)+" h")+" ago · scores are delayed on the free data plan"+(age>360?" · data may be out of date":"")+" · Data: football-data.org";
+nxt()}
+function openUp(i){var m=MC.upcoming[i],a=m.analysis,c=MC.competitions[m.comp]||{},d=dt(m),h='<h3>'+esc(m.home)+' v '+esc(m.away)+'</h3><div class="note">'+dl(d)+', '+hm(d)+' · '+esc(c.name||"")+(MC.demo?'<span class="tag">Demo data</span>':'')+'</div>';
+if(a){h+='<div class="pb"><i style="width:'+pc(a.p[0])+';background:var(--sky)"></i><i style="width:'+pc(a.p[1])+';background:var(--mut)"></i><i style="width:'+pc(a.p[2])+';background:var(--acc)"></i></div><div class="leg"><span>'+esc(m.home)+' '+pc(a.p[0])+'</span><span>Draw '+pc(a.p[1])+'</span><span>'+esc(m.away)+' '+pc(a.p[2])+'</span></div>'+
+'<p class="note">Expected goals '+a.xg[0].toFixed(2)+' to '+a.xg[1].toFixed(2)+'. Most likely score '+a.likely[0]+'–'+a.likely[1]+' ('+pc(a.likely_p)+').</p>'+
+'<div class="sec">Form (last 5, oldest to newest)</div><div class="note">'+esc(m.home)+' '+fc(a.form.home)+'</div><div class="note">'+esc(m.away)+' '+fc(a.form.away)+'</div><div class="note">At home: '+fc(a.form.home_at_home)+' · Away from home: '+fc(a.form.away_away)+'</div>'+
+'<div class="sec">Key factors</div><ul class="tips">'+a.factors.map(function(x){return'<li>'+esc(x)+'</li>'}).join("")+'</ul>'+(a.low_sample?'<p class="note">Early in the season, so one of these teams has few matches behind its ratings. Treat the numbers with extra caution.</p>':'')}
+else h+='<p class="note">Not enough finished matches yet for a model read.</p>';
+if(c.url&&c.url!=="#")h+='<p><a class="btn alt" href="'+esc(c.url)+'" target="_blank" rel="noopener noreferrer">Where to watch: official '+esc(c.name)+' site</a></p>';
+h+='<p class="note">Check your local licensed broadcaster for coverage. Estimates only, not advice.</p><button class="btn" id="cl">Close</button>';
+$("dc").innerHTML=h;$("cl").onclick=function(){$("dg").close()};$("dg").showModal()}
+document.addEventListener("click",function(e){var b=e.target.closest("button.fx");if(b&&MC){openUp(+b.dataset.i);return}var c=e.target.closest(".chips .chip");if(c&&MC){flt=c.dataset.c;render()}});
 $("dg").addEventListener("click",function(e){if(e.target===this)this.close()});
+fetch("data/matches.json",{cache:"no-store"}).then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(j){MC=j;if(j.demo)SH=Math.round((Date.now()-Date.parse(j.generated_at))/864e5)*864e5;render()}).catch(function(){$("mcs").textContent="Match data is not available here. Open the GitHub Pages version of this site to see the match centre.";$("nx").innerHTML='<p class="note">Match data unavailable.</p>'});
 stats();sz();newRound();requestAnimationFrame(tick);
 })();
 </script>

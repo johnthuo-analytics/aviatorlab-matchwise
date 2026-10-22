@@ -3,7 +3,9 @@ name: Deploy site
 on:
   push:
     branches: [main]
-    paths: ["site/**"]
+    paths: ["site/**", "src/**", "scripts/**", ".github/workflows/pages.yml"]
+  schedule:
+    - cron: "*/20 * * * *"   # refresh match data every 20 minutes
   workflow_dispatch:
 
 permissions:
@@ -17,12 +19,21 @@ concurrency:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+    env:
+      FOOTBALL_DATA_API_KEY: ${{ secrets.FOOTBALL_DATA_API_KEY }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pandas numpy scipy
+      - name: Refresh match data (skipped without an API key)
+        if: env.FOOTBALL_DATA_API_KEY != ''
+        run: python scripts/fetch_matches.py
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

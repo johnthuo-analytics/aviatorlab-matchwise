@@ -39,6 +39,14 @@ streamlit run app.py
 
 Requires Python 3.10+. To use the library without the dashboard: `pip install -e .`
 
+## Match centre (real fixtures, results and analysis)
+The site reads `site/data/matches.json`. A bundled demo file (fictional teams) works out of the box. For real matches:
+1. Register free at https://www.football-data.org/client/register and copy your API token.
+2. In your GitHub repo open **Settings → Secrets and variables → Actions → New repository secret**. Name it `FOOTBALL_DATA_API_KEY` and paste the token.
+3. Run **Actions → Deploy site → Run workflow**. After that the site refreshes itself every 20 minutes.
+
+Notes: the free plan covers the Premier League, Champions League, La Liga, Serie A and Bundesliga, but scores are **delayed** and there is no broadcast data, so "where to watch" links to each competition's official site. Check the provider's terms for your use. GitHub pauses scheduled workflows after 60 days without repository activity; re-run the workflow to wake it.
+
 ## Share it as a website
 1. Push the repo to GitHub.
 2. In the repo go to **Settings → Pages** and set **Source** to **GitHub Actions**.
@@ -84,13 +92,15 @@ Do not chase losses or borrow to gamble. Set limits in advance and stop when rea
 ```text
 aviatorlab-matchwise/
 ├── app.py                      # Streamlit dashboard
-├── site/index.html             # standalone shareable web dashboard
+├── site/index.html             # standalone shareable web dashboard + match centre
+├── site/data/matches.json      # match data (demo by default; refreshed by CI)
 ├── data/                       # synthetic sample CSVs (matches, multipliers, fixtures)
 ├── .github/workflows/          # CI and GitHub Pages deploy
 ├── scripts/generate_sample_data.py
 ├── src/aviatorlab_matchwise/
 │   ├── aviator.py              # stats, fair-game checks, simulations
 │   ├── matchwise.py            # Poisson model, metrics, backtesting
+│   ├── matchcentre.py          # match-centre analysis builder
 │   └── loaders.py              # validated CSV loading
 ├── tests/
 ├── CHANGELOG.md
