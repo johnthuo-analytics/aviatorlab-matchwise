@@ -84,11 +84,12 @@ ul.tips{padding-left:18px;color:var(--mut)}ul.tips li{margin:6px 0}
 <div class="ctl">
 <label>Stake (credits)<input type="number" id="stake" value="10" min="1" step="1"></label>
 <label>Auto cash-out (×)<input type="number" id="auto" value="2" min="1.1" step="0.1"></label>
-<button class="btn" id="play">Start auto-play</button>
+<button class="btn" id="bet">Place bet</button>
+<button class="btn alt" id="play">Start auto-play</button>
 <button class="btn alt" id="cash" disabled>Cash out now</button>
 <button class="btn alt" id="fast">Simulate 5,000 rounds</button>
 </div>
-<p class="note" id="msg" role="status">Each round is generated fresh in your browser with a 3% house edge, like a typical crash game. Turn on auto-play to see what a strategy really returns.</p>
+<p class="note" id="msg" role="status">Press Place bet before the round starts, then Cash out before it crashes. Or use auto-play with a cash-out target. Rounds are random with a 3% house edge, like a typical crash game.</p>
 <div class="grid">
 <div class="card"><h3>Virtual balance</h3><div class="big num" id="bal">1,000</div><div class="note num" id="pl">No rounds played</div></div>
 <div class="card"><h3>Rounds seen</h3><div class="big num" id="rn">0</div><div class="note">since you opened the page</div></div>
@@ -99,6 +100,7 @@ ul.tips{padding-left:18px;color:var(--mut)}ul.tips li{margin:6px 0}
 <div class="card"><h3>Balance after each round</h3><canvas id="sp"></canvas></div>
 <div class="card"><h3>Next match</h3><div id="nx"></div></div>
 </div>
+<div class="card" style="margin-top:14px"><h3>Can history predict the next round?</h3><div id="an" class="note"></div></div>
 </section>
 
 <section id="fixtures">
@@ -139,7 +141,7 @@ function sg(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorag
 var tabs=["dashboard","fixtures","profile","safe"];
 function show(t){if(tabs.indexOf(t)<0)t="dashboard";tabs.forEach(function(x){$(x).classList.toggle("on",x===t)});
 document.querySelectorAll("nav button").forEach(function(b){b.setAttribute("aria-selected",b.dataset.t===t)});
-if(t==="dashboard")sz();window.scrollTo(0,0)}
+if(t==="dashboard"&&cv)sz();window.scrollTo(0,0)}
 document.querySelectorAll("nav button").forEach(function(b){b.onclick=function(){show(b.dataset.t)}});
 document.querySelectorAll("[data-go]").forEach(function(b){b.onclick=function(){show(b.dataset.go)}});
 show((location.hash||"").slice(1));
@@ -151,7 +153,7 @@ setName(sg("al-name"));$("pn").onchange=function(){setName(this.value)};
 var ll=+sg("al-ll")||200;$("ll").value=ll;$("ll").onchange=function(){ll=Math.max(10,+this.value||200);sg("al-ll",ll)};
 /* state */
 var START=1000,wallet=START,rounds=0,hits=0,hist=[],series=[START],played=0,wins=0,staked=0,returned=0,autoOn=false,bet=null;
-var ph="wait",t0=performance.now(),cp=2,m=1,sp=1;
+var ph="wait",t0=performance.now(),cp=2,m=1,sp=1,nextBet=false,all=[];
 function crashPt(){var u=1-Math.random();return Math.max(1,Math.floor(97/u)/100)}
 /* canvas */
 var cv=$("cv"),cx=cv.getContext("2d"),W=0,H=0;
@@ -169,29 +171,36 @@ function spark(){var s=$("sp"),c=s.getContext("2d"),w=s.clientWidth,h=70;c.clear
 var a=series.slice(-120),lo=Math.min.apply(0,a),hi=Math.max.apply(0,a);if(hi===lo){hi+=1}
 var cs=getComputedStyle(document.documentElement);c.beginPath();a.forEach(function(v,i){var x=i/(a.length-1)*w,y=h-4-((v-lo)/(hi-lo))*(h-8);i?c.lineTo(x,y):c.moveTo(x,y)});c.strokeStyle=a[a.length-1]>=START?cs.getPropertyValue("--sky"):cs.getPropertyValue("--acc");c.lineWidth=2;c.stroke()}
 /* round loop */
+function placeBet(auto){var s=Math.max(1,+$("stake").value||10);
+if(START-wallet>=ll){autoOn=false;$("play").textContent="Start auto-play";say("Loss limit reached, so betting is paused. That is the limit working as intended.");return false}
+if(wallet<s){autoOn=false;$("play").textContent="Start auto-play";say("Balance too low for that stake.");return false}
+bet={s:s,done:false,auto:auto};wallet-=s;staked+=s;stats();return true}
 function newRound(){ph="wait";t0=performance.now();m=1;cp=crashPt();bet=null;
-if(autoOn){if(START-wallet>=ll){autoOn=false;$("play").textContent="Start auto-play";say("Loss limit reached, so auto-play stopped. That is the limit working as intended.")}
-else{var s=Math.max(1,+$("stake").value||10);if(wallet>=s){bet={s:s,done:false};wallet-=s;staked+=s}else{autoOn=false;$("play").textContent="Start auto-play";say("Balance too low for that stake.")}}}
+if(nextBet){nextBet=false;placeBet(false)}else if(autoOn)placeBet(true);
 $("cash").disabled=true;$("mult").classList.remove("crash")}
 function pay(x){bet.done=true;bet.x=x;wallet+=bet.s*x;returned+=bet.s*x;played++;if(x>1)wins++}
-function end(){rounds++;if(cp>=2)hits++;hist.unshift(cp);hist=hist.slice(0,14);
-if(bet&&!bet.done){bet.done=true;played++}series.push(wallet);stats()}
-function tick(now){var el=now-t0,mu=$("mult");
-if(ph==="wait"){var s=Math.max(0,4-el/1000);mu.innerHTML="1.00×<small>Next round in "+Math.ceil(s)+"s"+(bet?" · bet placed":"")+"</small>";if(el>=4000){ph="fly";t0=now;$("cash").disabled=!(bet&&!bet.done)}}
+function end(){rounds++;all.push(cp);if(cp>=2)hits++;hist.unshift(cp);hist=hist.slice(0,14);
+if(bet&&!bet.done){bet.done=true;played++;say("Crashed at "+cp.toFixed(2)+"×, so the stake was lost.")}series.push(wallet);stats()}
+function tick(now){var el=now-t0,mu=$("mult"),bb=$("bet");bb.disabled=!!(bet||nextBet);bb.textContent=bet?"Bet placed":nextBet?"Bet queued":(ph==="wait"?"Place bet":"Bet next round");
+if(ph==="wait"){var s=Math.max(0,5-el/1000);mu.innerHTML="1.00×<small>Next round in "+Math.ceil(s)+"s"+(bet?" · bet placed":"")+"</small>";if(el>=5000){ph="fly";t0=now;$("cash").disabled=!(bet&&!bet.done)}}
 else if(ph==="fly"){var t=el/1000;m=Math.exp(.08*t+.004*t*t);
-if(bet&&!bet.done){var a=Math.max(1.1,+$("auto").value||2);if(m>=a&&m<cp){pay(a);say("Cashed out at "+a.toFixed(2)+"×.");$("cash").disabled=true}}
+if(bet&&!bet.done&&bet.auto){var a=Math.max(1.1,+$("auto").value||2);if(m>=a&&m<cp){pay(a);say("Cashed out at "+a.toFixed(2)+"×.");$("cash").disabled=true}}
 if(m>=cp){m=cp;ph="crash";t0=now;end();mu.classList.add("crash");mu.innerHTML=cp.toFixed(2)+"×<small>Crashed</small>";$("cash").disabled=true}
-else mu.innerHTML=m.toFixed(2)+"×<small>Flying</small>"}
+else mu.innerHTML=m.toFixed(2)+"×<small>"+(bet&&!bet.done?"Cash out for "+fmt(bet.s*m)+" credits":"Flying")+"</small>"}
 else if(el>2500)newRound();
 draw();requestAnimationFrame(tick)}
 function say(t){$("msg").textContent=t}
+$("bet").onclick=function(){if(bet||nextBet)return;if(ph==="wait"){if(placeBet(false))say("Bet placed. Press Cash out before it crashes.")}else{nextBet=true;say("Bet queued for the next round.")}};
 $("cash").onclick=function(){if(ph==="fly"&&bet&&!bet.done){var x=Math.floor(m*100)/100;pay(x);say("Cashed out at "+x.toFixed(2)+"×.");this.disabled=true}};
 $("play").onclick=function(){autoOn=!autoOn;this.textContent=autoOn?"Stop auto-play":"Start auto-play";if(autoOn){START=Math.max(START,wallet);say("Auto-play on. The next round will include your virtual stake.")}};
 $("rs").onclick=function(){wallet=START=1000;series=[1000];played=wins=staked=returned=0;stats()};
 $("fast").onclick=function(){var s=Math.max(1,+$("stake").value||10),a=Math.max(1.1,+$("auto").value||2),n=5000,b=0,h=0;
 for(var i=0;i<n;i++){var c=crashPt();if(c>=a){b+=s*(a-1);h++}else b-=s}
 var rtp=h*a/n;say("Over "+fmt(n)+" instant rounds at "+a.toFixed(1)+"× the virtual result was "+(b>=0?"+":"−")+fmt(Math.abs(b))+" credits. Observed return "+(rtp*100).toFixed(1)+"% of stakes; the model’s long-run return is 97%. Try other targets: they all converge there.")};
-function stats(){var d=wallet-START;$("bal").textContent=fmt(wallet);
+function analyse(){var an=$("an");if(all.length<30){an.textContent="Collecting rounds ("+all.length+" of 30). Then this card tests whether streaks change the odds.";return}
+var a1=0,h1=0,a2=0,h2=0;for(var i=3;i<all.length;i++){var low=all[i-1]<2&&all[i-2]<2&&all[i-3]<2;if(low){a1++;if(all[i]>=2)h1++}else{a2++;if(all[i]>=2)h2++}}
+an.textContent="After 3 rounds in a row under 2×, the next round reached 2× in "+(a1?Math.round(h1/a1*100):0)+"% of "+a1+" cases. After any other pattern: "+(a2?Math.round(h2/a2*100):0)+"% of "+a2+". The model says 48.5% every time, so a streak does not make a high round “due”."}
+function stats(){analyse();var d=wallet-START;$("bal").textContent=fmt(wallet);
 $("pl").textContent=played?((d>=0?"+":"−")+fmt(Math.abs(d))+" vs start · "+wins+" of "+played+" bets won"):"No bets placed";$("pl").className="note num "+(played?(d>=0?"up":"dn"):"");
 $("rn").textContent=fmt(rounds);$("r2").textContent=rounds?(hits/rounds*100).toFixed(1)+"%":"–";
 $("hist").innerHTML=hist.map(function(c){return '<span class="'+(c>=2?"hi":"")+'">'+c.toFixed(2)+'×</span>'}).join("");
@@ -212,13 +221,16 @@ function pc(x){return Math.round(x*100)+"%"}
 function row(f,i){var p=pred(f[0],f[1]);return '<button class="fx" data-i="'+i+'"><time>'+f[3]+'</time><b>'+f[0]+' v '+f[1]+'</b><span class="pp"><span>'+pc(p.h)+'</span><span>'+pc(p.d)+'</span><span>'+pc(p.a)+'</span></span></button>'}
 var out="",last=0;FX.forEach(function(f,i){if(f[2]!==last){last=f[2];out+='<div class="day">'+dayLbl(f[2])+'</div>'}out+=row(f,i)});
 $("fxl").innerHTML=out;$("nx").innerHTML=row(FX[0],0)+'<p class="note">Home, draw, away. Tap to open.</p>';
+function read(f,p){var h=f[0],a=f[1],t=p.h>=p.a&&p.h>=p.d?h:(p.a>=p.d?a:"Draw"),gap=Math.abs(p.h-p.a);
+if(t==="Draw")return"Too close to call; a draw is the single most likely result ("+pc(p.d)+").";
+return(gap<.1?"Evenly matched":gap<.25?"Slight edge":"Clear favourite")+": "+t+" ("+pc(t===h?p.h:p.a)+" to win). Attack "+TM[h][0].toFixed(2)+", goals conceded "+TM[h][1].toFixed(2)+" for "+h+"; "+TM[a][0].toFixed(2)+" and "+TM[a][1].toFixed(2)+" for "+a+" (lower conceded is better)."}
 function open(i){var f=FX[i],p=pred(f[0],f[1]),g="";
 for(var j=0;j<=5;j++)g+='<div class="h">'+j+'</div>';g='<div class="h"></div>'+g;
 for(var r=0;r<=5;r++){g+='<div class="h">'+r+'</div>';for(var c=0;c<=5;c++){var v=p.M[r][c];g+='<div style="--o:'+Math.min(.95,v*7).toFixed(2)+'">'+(v>=.02?Math.round(v*100):"")+'</div>'}}
 $("dc").innerHTML='<h3>'+f[0]+' v '+f[1]+'</h3><div class="note">'+dayLbl(f[2])+', '+f[3]+' <span class="tag">Demo data</span></div>'+
 '<div class="pb"><i style="width:'+pc(p.h)+';background:var(--sky)"></i><i style="width:'+pc(p.d)+';background:var(--mut)"></i><i style="width:'+pc(p.a)+';background:var(--acc)"></i></div>'+
 '<div class="leg"><span>'+f[0]+' '+pc(p.h)+'</span><span>Draw '+pc(p.d)+'</span><span>'+f[1]+' '+pc(p.a)+'</span></div>'+
-'<p class="note">Expected goals '+p.lh.toFixed(2)+' to '+p.la.toFixed(2)+'. Most likely score '+p.best[0]+'–'+p.best[1]+' ('+pc(p.best[2])+').</p>'+
+'<p><b>Model read:</b> '+read(f,p)+'</p><p class="note">Expected goals '+p.lh.toFixed(2)+' to '+p.la.toFixed(2)+'. Most likely score '+p.best[0]+'–'+p.best[1]+' ('+pc(p.best[2])+').</p>'+
 '<div class="note">Scoreline chances (%), home goals down, away goals across</div><div class="mx">'+g+'</div>'+
 '<p class="note">Independent-Poisson baseline. It ignores injuries, lineups and form, and probabilities are uncertain estimates, not advice.</p><button class="btn" id="cl">Close</button>';
 $("cl").onclick=function(){$("dg").close()};$("dg").showModal()}
